@@ -3,45 +3,592 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Harit Officer Portal</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}</style>
+<title>Harit — Officer Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  /* ── Creative Mode Design Tokens ── */
+  :root {
+    --cream:   #EFE9D9;
+    --cream-2: #E4DCC4;
+    --green:   #1F8A4C;
+    --pink:    #F06CA8;
+    --orange:  #E85A1F;
+    --yellow:  #F5C518;
+    --ink:     #0F0F0F;
+    --ink-muted: #3A3A34;
+    --ink-light: #6B6B60;
+    --surface: #FAF7F0;
+    --white:   #FFFDF7;
+    --red-soft: #D93025;
+    --red-bg:  #FDE8E6;
+    --amber-bg: #FEF3D6;
+    --green-bg: #E6F4EA;
+
+    --font-display: 'Archivo Black', sans-serif;
+    --font-body: 'Space Grotesk', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+
+    --radius: 4px;
+    --shadow-card: 0 2px 12px rgba(0,0,0,0.06);
+    --shadow-lift: 0 4px 20px rgba(0,0,0,0.10);
+    --transition: 200ms ease-out;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { font-size: 16px; }
+
+  body {
+    font-family: var(--font-body);
+    font-weight: 400;
+    line-height: 1.6;
+    color: var(--ink);
+    background: var(--cream);
+    min-height: 100dvh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Utility ── */
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+  /* ── Login Screen ── */
+  #login {
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background:
+      radial-gradient(ellipse at 20% 80%, rgba(31,138,76,0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(245,197,24,0.06) 0%, transparent 50%),
+      var(--cream);
+  }
+
+  .login-card {
+    background: var(--white);
+    border: 1px solid var(--cream-2);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+    padding: 2.5rem 2rem;
+    width: 100%;
+    max-width: 360px;
+  }
+
+  .login-brand {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    color: var(--green);
+    letter-spacing: -0.5px;
+    margin-bottom: 0.25rem;
+  }
+
+  .login-brand .accent-dot { color: var(--yellow); }
+
+  .login-sub {
+    font-size: 0.875rem;
+    color: var(--ink-light);
+    font-weight: 500;
+    margin-bottom: 2rem;
+    letter-spacing: 0.02em;
+  }
+
+  .field-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--ink-muted);
+    margin-bottom: 0.375rem;
+    letter-spacing: 0.02em;
+  }
+
+  .field-input {
+    width: 100%;
+    border: 1px solid var(--cream-2);
+    border-radius: var(--radius);
+    padding: 0.625rem 0.75rem;
+    font-family: var(--font-body);
+    font-size: 0.9375rem;
+    color: var(--ink);
+    background: var(--surface);
+    transition: border-color var(--transition), box-shadow var(--transition);
+    outline: none;
+  }
+
+  .field-input:focus {
+    border-color: var(--green);
+    box-shadow: 0 0 0 2px rgba(31,138,76,0.15);
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    border: none;
+    border-radius: var(--radius);
+    padding: 0.625rem 1rem;
+    font-family: var(--font-body);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--white);
+    background: var(--green);
+    cursor: pointer;
+    transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+  }
+
+  .btn-primary:hover { background: #176D3D; box-shadow: var(--shadow-lift); transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0px); box-shadow: var(--shadow-card); }
+
+  .login-error {
+    font-size: 0.8125rem;
+    color: var(--red-soft);
+    margin-top: 0.75rem;
+    display: none;
+  }
+
+  .login-error.show { display: block; }
+
+  /* ── App Shell ── */
+  #app {
+    display: none;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 1.5rem;
+  }
+
+  #app.active { display: block; }
+
+  /* ── Header ── */
+  .app-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .app-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.25rem, 3vw, 1.75rem);
+    color: var(--ink);
+    letter-spacing: -0.3px;
+  }
+
+  .app-title .accent { color: var(--green); }
+
+  .app-subtitle {
+    font-size: 0.8125rem;
+    color: var(--ink-light);
+    font-weight: 500;
+    margin-top: 0.125rem;
+    letter-spacing: 0.02em;
+  }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1.5px solid var(--orange);
+    border-radius: var(--radius);
+    padding: 0.5rem 1rem;
+    font-family: var(--font-body);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--orange);
+    background: transparent;
+    cursor: pointer;
+    transition: background var(--transition), color var(--transition), transform var(--transition);
+  }
+
+  .btn-secondary:hover {
+    background: var(--orange);
+    color: var(--white);
+    transform: translateY(-1px);
+  }
+
+  .btn-logout {
+    border-color: var(--ink-light);
+    color: var(--ink-light);
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+  }
+
+  .btn-logout:hover { background: var(--ink-light); color: var(--cream); }
+
+  .header-actions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+
+  /* ── Stats Grid ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+  }
+
+  .stat-card {
+    background: var(--white);
+    border: 1px solid var(--cream-2);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+    padding: 1.25rem 1rem;
+    transition: box-shadow var(--transition), transform var(--transition);
+  }
+
+  .stat-card:hover { box-shadow: var(--shadow-lift); transform: translateY(-2px); }
+
+  .stat-value {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+  }
+
+  .stat-label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--ink-light);
+    margin-top: 0.25rem;
+    letter-spacing: 0.02em;
+  }
+
+  .stat-card.green  .stat-value { color: var(--green);  }
+  .stat-card.orange .stat-value { color: var(--orange); }
+  .stat-card.pink   .stat-value { color: var(--pink);   }
+  .stat-card.yellow .stat-value { color: #B8940D; }
+
+  /* ── Foresight Box ── */
+  .foresight-box {
+    display: none;
+    background: var(--white);
+    border: 1.5px solid var(--yellow);
+    border-left: 4px solid var(--yellow);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 2rem;
+    font-size: 0.875rem;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    color: var(--ink-muted);
+    box-shadow: var(--shadow-card);
+  }
+
+  .foresight-box.show { display: block; animation: fadeSlideIn 420ms ease-out both; }
+
+  .foresight-label {
+    font-family: var(--font-display);
+    font-size: 0.875rem;
+    color: var(--orange);
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.02em;
+  }
+
+  /* ── Main Layout ── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 2fr 3fr;
+    gap: 1rem;
+    align-items: start;
+  }
+
+  @media (max-width: 768px) {
+    .main-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── Chat List Panel ── */
+  .panel {
+    background: var(--white);
+    border: 1px solid var(--cream-2);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid var(--cream-2);
+    font-family: var(--font-body);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--ink-muted);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .chat-list {
+    max-height: 32rem;
+    overflow-y: auto;
+  }
+
+  .chat-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: none;
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid var(--cream-2);
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: background var(--transition);
+  }
+
+  .chat-item:last-child { border-bottom: none; }
+  .chat-item:hover { background: var(--surface); }
+  .chat-item.active { background: var(--green-bg); border-left: 3px solid var(--green); }
+
+  .chat-phone {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--ink);
+    font-family: var(--font-mono);
+    letter-spacing: -0.02em;
+  }
+
+  .chat-preview {
+    font-size: 0.8125rem;
+    color: var(--ink-light);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    margin-top: 0.125rem;
+  }
+
+  .chat-meta {
+    font-size: 0.6875rem;
+    color: var(--ink-light);
+    margin-top: 0.25rem;
+    font-family: var(--font-mono);
+    letter-spacing: 0.02em;
+  }
+
+  .empty-list {
+    padding: 2rem 1rem;
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--ink-light);
+  }
+
+  /* ── Inspector Panel ── */
+  .inspector-empty {
+    padding: 4rem 1rem;
+    text-align: center;
+    font-size: 0.9375rem;
+    color: var(--ink-light);
+    font-weight: 500;
+  }
+
+  .inspector-empty .icon-hint {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+    opacity: 0.35;
+    display: block;
+  }
+
+  .inspector { display: none; padding: 1.25rem; }
+  .inspector.active { display: block; animation: fadeSlideIn 300ms ease-out both; }
+
+  .inspector-jid {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--ink-light);
+    margin-bottom: 0.75rem;
+    letter-spacing: 0.02em;
+  }
+
+  /* ── Summary Card ── */
+  .summary-card {
+    border: 1px solid var(--cream-2);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+    animation: fadeSlideIn 300ms ease-out both;
+  }
+
+  .summary-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: 2px;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    font-family: var(--font-body);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .badge-alerting  { background: var(--red-bg);   color: var(--red-soft); }
+  .badge-noteworthy { background: var(--amber-bg); color: #92690A; }
+  .badge-routine   { background: var(--green-bg); color: var(--green); }
+
+  .summary-meta {
+    font-size: 0.75rem;
+    color: var(--ink-light);
+    font-family: var(--font-mono);
+  }
+
+  .summary-row {
+    font-size: 0.875rem;
+    color: var(--ink-muted);
+    line-height: 1.55;
+    margin-top: 0.375rem;
+  }
+
+  .summary-row strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .summary-loading {
+    font-size: 0.8125rem;
+    color: var(--ink-light);
+    font-style: italic;
+  }
+
+  /* ── Message Bubbles ── */
+  .msg-list {
+    max-height: 24rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-right: 0.25rem;
+  }
+
+  .msg-row { display: flex; }
+  .msg-row.user { justify-content: flex-end; }
+  .msg-row.bot  { justify-content: flex-start; }
+
+  .msg-bubble {
+    display: inline-block;
+    max-width: 82%;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius);
+    font-size: 0.8125rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .msg-row.user .msg-bubble {
+    background: var(--green);
+    color: var(--white);
+    border-bottom-right-radius: 0;
+  }
+
+  .msg-row.bot .msg-bubble {
+    background: var(--white);
+    color: var(--ink-muted);
+    border: 1px solid var(--cream-2);
+    border-bottom-left-radius: 0;
+  }
+
+  .msg-row.tool .msg-bubble {
+    background: var(--amber-bg);
+    color: #7A5900;
+    border: 1px dashed var(--yellow);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    max-width: 90%;
+  }
+
+  /* ── Animations ── */
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Scrollbar Styling ── */
+  .chat-list::-webkit-scrollbar,
+  .msg-list::-webkit-scrollbar {
+    width: 5px;
+  }
+  .chat-list::-webkit-scrollbar-track,
+  .msg-list::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .chat-list::-webkit-scrollbar-thumb,
+  .msg-list::-webkit-scrollbar-thumb {
+    background: var(--cream-2);
+    border-radius: 4px;
+  }
+</style>
 </head>
-<body class="bg-stone-100 text-stone-800">
-<div id="login" class="min-h-screen flex items-center justify-center">
-  <div class="bg-white p-8 rounded-xl shadow-md w-80">
-    <div class="text-2xl font-bold text-green-800 mb-1">🌾 Harit</div>
-    <div class="text-sm text-stone-500 mb-6">Officer Portal — KVK / Agriculture Dept</div>
-    <input id="pw" type="password" placeholder="Officer password" class="w-full border rounded px-3 py-2 mb-3 text-sm" />
-    <button onclick="login()" class="w-full bg-green-800 text-white rounded py-2 text-sm hover:bg-green-900">Sign in</button>
-    <div id="loginErr" class="text-red-600 text-xs mt-2 hidden">Wrong password</div>
+
+<body>
+
+<!-- ════════ LOGIN ════════ -->
+<div id="login">
+  <div class="login-card">
+    <div class="login-brand">Harit<span class="accent-dot">.</span></div>
+    <div class="login-sub">Officer Portal &mdash; KVK / Agriculture Dept</div>
+    <label class="field-label" for="pw">Password</label>
+    <input id="pw" type="password" class="field-input" placeholder="Enter officer password" style="margin-bottom:1.25rem" />
+    <button onclick="login()" class="btn-primary">Sign in</button>
+    <div id="loginErr" class="login-error">Incorrect password. Try again.</div>
   </div>
 </div>
 
-<div id="app" class="hidden max-w-6xl mx-auto p-6">
-  <header class="flex items-center justify-between mb-6">
+<!-- ════════ DASHBOARD ════════ -->
+<div id="app">
+  <header class="app-header">
     <div>
-      <h1 class="text-xl font-bold text-green-900">🌾 Harit — District Agriculture Dashboard</h1>
-      <p class="text-xs text-stone-500">Farmer helpline oversight · Gemma 4 on WhatsApp · Groq analytics</p>
+      <h1 class="app-title"><span class="accent">Harit</span> &mdash; District Agriculture Dashboard</h1>
+      <p class="app-subtitle">Farmer helpline oversight &middot; Gemma&nbsp;4 on WhatsApp &middot; Groq analytics</p>
     </div>
-    <button onclick="foresight()" class="bg-amber-600 text-white text-sm px-4 py-2 rounded hover:bg-amber-700">Regional Foresight</button>
+    <div class="header-actions">
+      <button onclick="foresight()" class="btn-secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        Regional Foresight
+      </button>
+      <button onclick="logout()" class="btn-secondary btn-logout">Sign out</button>
+    </div>
   </header>
 
-  <div id="stats" class="grid grid-cols-4 gap-3 mb-6"></div>
+  <!-- Stats -->
+  <div id="stats" class="stats-grid"></div>
 
-  <div id="foresightBox" class="hidden bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-sm whitespace-pre-wrap"></div>
+  <!-- Foresight -->
+  <div id="foresightBox" class="foresight-box">
+    <div class="foresight-label">Regional Foresight</div>
+    <div id="foresightText"></div>
+  </div>
 
-  <div class="grid grid-cols-5 gap-4">
-    <div class="col-span-2 bg-white rounded-lg shadow-sm overflow-hidden">
-      <div class="px-4 py-3 border-b text-sm font-semibold text-stone-600">Farmer conversations</div>
-      <div id="chatList" class="divide-y max-h-[28rem] overflow-y-auto"></div>
+  <!-- Main Grid -->
+  <div class="main-grid">
+    <!-- Chat List -->
+    <div class="panel">
+      <div class="panel-header">Farmer Conversations</div>
+      <div id="chatList" class="chat-list"></div>
     </div>
-    <div class="col-span-3 bg-white rounded-lg shadow-sm p-4">
-      <div id="inspectorEmpty" class="text-sm text-stone-400 text-center py-16">Select a conversation to inspect</div>
-      <div id="inspector" class="hidden">
-        <div class="text-xs text-stone-500 mb-2" id="inspectorJid"></div>
-        <div id="summary" class="mb-4"></div>
-        <div id="msgs" class="space-y-2 max-h-96 overflow-y-auto"></div>
+
+    <!-- Inspector -->
+    <div class="panel">
+      <div id="inspectorEmpty" class="inspector-empty">
+        <span class="icon-hint">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </span>
+        Select a conversation to inspect
+      </div>
+      <div id="inspector" class="inspector">
+        <div id="inspectorJid" class="inspector-jid"></div>
+        <div id="summary"></div>
+        <div id="msgs" class="msg-list"></div>
       </div>
     </div>
   </div>
@@ -52,84 +599,147 @@ let token = sessionStorage.getItem("t") || "";
 let currentJid = null;
 
 async function api(path, opts = {}) {
-  const res = await fetch(path, { ...opts, headers: { "Content-Type": "application/json", Authorization: "Bearer " + token } });
+  const res = await fetch(path, {
+    ...opts,
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+  });
   if (res.status === 401) { logout(); throw new Error("unauthorized"); }
   return res.json();
 }
 
 async function login() {
   const pw = document.getElementById("pw").value;
-  const r = await fetch("/api/auth/login", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ password: pw }) });
-  if (!r.ok) { document.getElementById("loginErr").classList.remove("hidden"); return; }
+  const r = await fetch("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password: pw }),
+  });
+  if (!r.ok) {
+    document.getElementById("loginErr").classList.add("show");
+    return;
+  }
   token = (await r.json()).token;
   sessionStorage.setItem("t", token);
   show();
 }
 
-function logout() { sessionStorage.removeItem("t"); location.reload(); }
+function logout() {
+  sessionStorage.removeItem("t");
+  location.reload();
+}
 
 async function show() {
-  document.getElementById("login").classList.add("hidden");
-  document.getElementById("app").classList.remove("hidden");
-  await refreshStats(); await refreshChats();
+  document.getElementById("login").style.display = "none";
+  document.getElementById("app").classList.add("active");
+  await refreshStats();
+  await refreshChats();
 }
 
 async function refreshStats() {
   const s = await api("/api/dashboard/stats");
   document.getElementById("stats").innerHTML = [
-    ["Messages handled", s.messages_handled, "bg-green-50 text-green-900"],
-    ["Conversations", s.chats, "bg-emerald-50 text-emerald-900"],
-    ["Crop photos", s.crop_photos, "bg-lime-50 text-lime-900"],
-    ["Voice notes sent", s.voice_notes_sent, "bg-teal-50 text-teal-900"],
-  ].map(([l, v, c]) => `<div class="rounded-lg p-4 ${c}"><div class="text-2xl font-bold">${v}</div><div class="text-xs">${l}</div></div>`).join("");
+    ["Messages handled", s.messages_handled, "green"],
+    ["Conversations",    s.chats,             "orange"],
+    ["Crop photos",      s.crop_photos,       "pink"],
+    ["Voice notes sent", s.voice_notes_sent,  "yellow"],
+  ]
+    .map(
+      ([l, v, c]) =>
+        `<div class="stat-card ${c}"><div class="stat-value">${v}</div><div class="stat-label">${l}</div></div>`
+    )
+    .join("");
 }
 
 async function refreshChats() {
   const chats = await api("/api/chats");
-  document.getElementById("chatList").innerHTML = chats.map(c => `
-    <button onclick="openChat('${c.jid}')" class="w-full text-left px-4 py-3 hover:bg-stone-50">
-      <div class="text-sm font-medium truncate">${c.jid.split("@")[0].slice(0, 16)}</div>
-      <div class="text-xs text-stone-500 truncate">${esc(c.last_message)}</div>
-      <div class="text-[10px] text-stone-400 mt-1">${c.msg_count} msgs · ${new Date(c.last_ts).toLocaleTimeString()}</div>
-    </button>`).join("") || '<div class="p-4 text-sm text-stone-400">No chats yet</div>';
+  const el = document.getElementById("chatList");
+  if (!chats.length) {
+    el.innerHTML = '<div class="empty-list">No farmer chats yet</div>';
+    return;
+  }
+  el.innerHTML = chats
+    .map(
+      (c) => `
+    <button class="chat-item" data-jid="${c.jid}" onclick="openChat('${c.jid}')">
+      <div class="chat-phone">${c.jid.split("@")[0].slice(0, 16)}</div>
+      <div class="chat-preview">${esc(c.last_message)}</div>
+      <div class="chat-meta">${c.msg_count} msgs &middot; ${new Date(c.last_ts).toLocaleTimeString()}</div>
+    </button>`
+    )
+    .join("");
 }
 
 async function openChat(jid) {
   currentJid = jid;
-  document.getElementById("inspectorEmpty").classList.add("hidden");
-  document.getElementById("inspector").classList.remove("hidden");
+
+  // highlight active item
+  document.querySelectorAll(".chat-item").forEach((el) => {
+    el.classList.toggle("active", el.dataset.jid === jid);
+  });
+
+  document.getElementById("inspectorEmpty").style.display = "none";
+  const insp = document.getElementById("inspector");
+  insp.classList.add("active");
   document.getElementById("inspectorJid").textContent = jid;
-  document.getElementById("summary").innerHTML = '<div class="text-xs text-stone-400">Analyzing…</div>';
+  document.getElementById("summary").innerHTML = '<div class="summary-loading">Analyzing conversation...</div>';
+
   const { messages } = await api("/api/chats/" + encodeURIComponent(jid));
-  document.getElementById("msgs").innerHTML = messages.map(m => `
-    <div class="${m.role === "user" ? "text-right" : ""}">
-      <span class="inline-block ${m.role === "user" ? "bg-green-100" : "bg-stone-100"} rounded px-3 py-1.5 text-sm max-w-[85%] text-left whitespace-pre-wrap">${esc(m.content)}</span>
-    </div>`).join("");
+  document.getElementById("msgs").innerHTML = messages
+    .map((m) => {
+      const type = m.role === "user" ? "user" : m.role === "tool" ? "tool" : "bot";
+      return `<div class="msg-row ${type}"><span class="msg-bubble">${esc(m.content)}</span></div>`;
+    })
+    .join("");
+
   const s = await api("/api/chats/" + encodeURIComponent(jid) + "/summary", { method: "POST" });
-  if (s.empty) { document.getElementById("summary").innerHTML = ""; return; }
-  const badge = s.status === "Alerting" ? "bg-red-100 text-red-700" : s.status === "Noteworthy" ? "bg-amber-100 text-amber-700" : "bg-stone-100 text-stone-600";
+  if (s.empty) {
+    document.getElementById("summary").innerHTML = "";
+    return;
+  }
+
+  const badgeCls =
+    s.status === "Alerting"
+      ? "badge-alerting"
+      : s.status === "Noteworthy"
+        ? "badge-noteworthy"
+        : "badge-routine";
+
+  const statusIcon =
+    s.status === "Alerting" ? "!!" : s.status === "Noteworthy" ? "!" : "OK";
+
   document.getElementById("summary").innerHTML = `
-    <div class="border rounded-lg p-3 text-sm">
-      <div class="flex gap-2 items-center mb-2">
-        <span class="px-2 py-0.5 rounded text-xs font-semibold ${badge}">${s.status}</span>
-        <span class="text-xs text-stone-400">crop: ${esc(s.crop)} · issue: ${esc(s.issueType)} · via ${s.engine}</span>
+    <div class="summary-card">
+      <div class="summary-header">
+        <span class="badge ${badgeCls}">${statusIcon} ${s.status}</span>
+        <span class="summary-meta">crop: ${esc(s.crop)} / issue: ${esc(s.issueType)} / via ${s.engine}</span>
       </div>
-      <div><b>📌 Concern:</b> ${esc(s.concern)}</div>
-      <div class="mt-1"><b>💡 Advice:</b> ${esc(s.advice)}</div>
+      <div class="summary-row"><strong>Concern:</strong> ${esc(s.concern)}</div>
+      <div class="summary-row"><strong>Advice given:</strong> ${esc(s.advice)}</div>
     </div>`;
 }
 
 async function foresight() {
   const box = document.getElementById("foresightBox");
-  box.classList.remove("hidden");
-  box.textContent = "Synthesizing regional pulse…";
+  box.classList.add("show");
+  document.getElementById("foresightText").textContent = "Synthesizing regional pulse...";
   const r = await api("/api/foresight", { method: "POST" });
-  box.textContent = "Regional Foresight (" + r.engine + "):\n\n" + r.text;
+  document.getElementById("foresightText").textContent = r.text;
+  document.querySelector(".foresight-label").textContent = "Regional Foresight (" + r.engine + ")";
 }
 
-function esc(s) { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; }
+function esc(s) {
+  const d = document.createElement("div");
+  d.textContent = s ?? "";
+  return d.innerHTML;
+}
 
+// auto-login on token restore
 if (token) show();
+
+// enter key on password field
+document.getElementById("pw").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") login();
+});
 </script>
 </body>
 </html>

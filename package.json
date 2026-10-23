@@ -11,7 +11,7 @@
     "dev": "tsc && node dist/index.js",
     "typecheck": "tsc --noEmit",
     "eval": "tsc && node dist/eval.js",
-    eval:live": "tsc && node dist/eval.js --live,
+    "eval:live": "tsc && node dist/eval.js --live",
     "dashboard": "tsc && node dist/index.js",
     "pm2:start": "pm2 start ecosystem.config.cjs",
     "pm2:logs": "pm2 logs harit",

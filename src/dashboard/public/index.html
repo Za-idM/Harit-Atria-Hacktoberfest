@@ -541,6 +541,10 @@
     <input id="pw" type="password" class="field-input" placeholder="Enter officer password" style="margin-bottom:1.25rem" />
     <button onclick="login()" class="btn-primary">Sign in</button>
     <div id="loginErr" class="login-error">Incorrect password. Try again.</div>
+    <div id="serverConfig" style="margin-top:1.25rem; font-size:0.75rem; color:var(--ink-light); text-align:center;">
+      <span id="serverUrlLabel"></span>
+      <a href="javascript:void(0)" onclick="promptApiUrl()" style="color:var(--orange); text-decoration:underline; margin-left:0.35rem;">change server URL</a>
+    </div>
   </div>
 </div>
 
@@ -600,12 +604,24 @@ let currentJid = null;
 
 // If hosted externally (e.g. Vercel), set API_BASE to your ngrok/tunnel URL.
 // When served from the Express server itself, leave it empty (relative paths).
-const API_BASE = window.location.hostname === "localhost" ? "" : (localStorage.getItem("harit_api") || "");
+let API_BASE = window.location.hostname === "localhost" ? "" : (localStorage.getItem("harit_api") || "");
 
-if (!API_BASE && window.location.hostname !== "localhost") {
-  const url = prompt("Enter your Harit API server URL (e.g. https://abc.ngrok-free.app):");
-  if (url) { localStorage.setItem("harit_api", url.replace(/\/+$/, "")); location.reload(); }
+function promptApiUrl() {
+  const current = localStorage.getItem("harit_api") || "";
+  const url = prompt("Enter your Harit API server URL (e.g. https://abc.trycloudflare.com or https://xyz.ngrok-free.app):", current);
+  if (url !== null) {
+    localStorage.setItem("harit_api", url.trim().replace(/\/+$/, ""));
+    location.reload();
+  }
 }
+
+function updateServerLabel() {
+  const lbl = document.getElementById("serverUrlLabel");
+  if (lbl) {
+    lbl.textContent = API_BASE ? "Connected to: " + API_BASE : "Connected to: local server";
+  }
+}
+updateServerLabel();
 
 async function api(path, opts = {}) {
   const res = await fetch(API_BASE + path, {
@@ -618,18 +634,27 @@ async function api(path, opts = {}) {
 
 async function login() {
   const pw = document.getElementById("pw").value;
-  const r = await fetch("/api/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password: pw }),
-  });
-  if (!r.ok) {
-    document.getElementById("loginErr").classList.add("show");
-    return;
+  const errEl = document.getElementById("loginErr");
+  errEl.classList.remove("show");
+
+  try {
+    const r = await fetch(API_BASE + "/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pw }),
+    });
+    if (!r.ok) {
+      errEl.textContent = r.status === 401 ? "Incorrect password. Try again." : "Server error (" + r.status + "). Check server URL.";
+      errEl.classList.add("show");
+      return;
+    }
+    token = (await r.json()).token;
+    sessionStorage.setItem("t", token);
+    show();
+  } catch (err) {
+    errEl.textContent = "Could not connect to " + (API_BASE || "server") + ". Is your tunnel running?";
+    errEl.classList.add("show");
   }
-  token = (await r.json()).token;
-  sessionStorage.setItem("t", token);
-  show();
 }
 
 function logout() {

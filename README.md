@@ -60,17 +60,43 @@ SQLite `metrics` table (`src/memory/db.ts`): `messages_handled`, `crop_photos`, 
 | Language | Sarvam AI (mayura translate / saaras STT / bulbul TTS) |
 | Memory | SQLite via `node:sqlite` (zero native deps) |
 | Reminders | node-cron + SQLite |
+| Officer dashboard | Express + Groq (`llama-3.3-70b-versatile`) + local fallback |
 | Audio conversion | ffmpeg-static |
 | Runtime | Node.js 24+ / TypeScript (ESM) |
 | Process | PM2 (`ecosystem.config.cjs`) |
+
+## Officer Dashboard (Phase 2)
+
+The same process serves a government-officer web portal on **http://localhost:3000** (password: `OFFICER_PASSWORD`, default `harit2026`). It reads the same SQLite DB the bot writes — zero extra wiring:
+
+```
+Farmer ↔ WhatsApp (Baileys) → messages → data/bot.db → Dashboard (Express, :3000)
+                                                            ↓
+                                          Groq Llama (triage, summaries, foresight)
+                                          fallback: deterministic local triage
+```
+
+Model split by design:
+- **Gemma 4 (`gemma-4-31b-it` via Gemini API)** — the farmer-facing brain on WhatsApp (answers, diagnosis)
+- **Groq Llama** — officer-side analytics only (per-chat triage into 🚨 Alerting / ⚠️ Noteworthy / ℹ️ Routine, crop/issue extraction, regional foresight briefing), because summaries must be instant and must not compete with farmer traffic for Gemini quota
+
+Features: stats cards (SQLite `metrics`), conversation list, full chat inspector with Groq triage card, one-click **Regional Foresight** executive briefing. If `GROQ_API_KEY` is absent or Groq fails, the dashboard transparently switches to a rule-based local triage — the UI never dies mid-demo.
+
+## Verified live (hackathon day, Oct 23 2026)
+
+- End-to-end on WhatsApp: voice note in Hindi/Kannada → English translation → Gemma answer → text reply delivered ✅ (voice-note upload blocked by venue WiFi DNS; works on normal networks)
+- Live eval: **21/23 checks** (`eval/results-latest.md`), misses were Gemini API 5xx
+- Model fallback chain proven live: `gemma-4-31b-it` → `gemma-4-26b-a4b-it` on 5xx
 
 ## Run it
 
 ```bash
 cp .env.example .env        # fill in SARVAM_API_KEY, GEMINI_API_KEY, EMAIL_*, OWNER_JID
+                            # optional: GROQ_API_KEY, OFFICER_PASSWORD
 npm install
 npm run build
 node dist/index.js          # scan the WhatsApp QR once; then message the number
+                            # dashboard boots on http://localhost:3000
 pm2 start ecosystem.config.cjs   # for the long-running demo
 ```
 

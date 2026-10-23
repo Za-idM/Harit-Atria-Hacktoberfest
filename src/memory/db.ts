@@ -36,8 +36,30 @@ export function getDb(): DatabaseSync {
       profile_json TEXT NOT NULL DEFAULT '{}',
       updated_ts INTEGER NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS metrics (
+      key TEXT PRIMARY KEY,
+      value INTEGER NOT NULL DEFAULT 0
+    );
   `);
   return _db;
+}
+
+export function bumpMetric(key: string): number {
+  getDb()
+    .prepare(
+      `INSERT INTO metrics (key, value) VALUES (?, 1)
+       ON CONFLICT(key) DO UPDATE SET value = value + 1`
+    )
+    .run(key);
+  return getMetric(key);
+}
+
+export function getMetric(key: string): number {
+  const row = getDb()
+    .prepare(`SELECT value FROM metrics WHERE key = ?`)
+    .get(key) as { value: number } | undefined;
+  return row?.value ?? 0;
 }
 
 export interface StoredMessage {

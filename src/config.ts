@@ -2,12 +2,8 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-function required(key: string): string {
-  const v = process.env[key];
-  if (!v) {
-    throw new Error(`Missing required env var: ${key}`);
-  }
-  return v;
+function env(key: string, fallback = ""): string {
+  return process.env[key] ?? fallback;
 }
 
 function int(key: string, fallback: number): number {
@@ -16,27 +12,27 @@ function int(key: string, fallback: number): number {
 }
 
 export const config = {
-  sarvamApiKey: required("SARVAM_API_KEY"),
-  geminiApiKey: required("GEMINI_API_KEY"),
-  geminiModel: process.env.GEMINI_MODEL || "gemma-4-31b-it",
-  defaultLanguageCode: process.env.DEFAULT_LANGUAGE_CODE || "en-IN",
-  voiceReplies: (process.env.VOICE_REPLIES ?? "true") !== "false",
+  sarvamApiKey: env("SARVAM_API_KEY"),
+  geminiApiKey: env("GEMINI_API_KEY"),
+  geminiModel: env("GEMINI_MODEL", "gemma-4-31b-it"),
+  defaultLanguageCode: env("DEFAULT_LANGUAGE_CODE", "en-IN"),
+  voiceReplies: (env("VOICE_REPLIES", "true")) !== "false",
 
   email: {
-    user: required("EMAIL_USER"),
-    pass: required("EMAIL_PASS"),
-    fromName: process.env.EMAIL_FROM_NAME || "Harit",
-    fromAddress: process.env.EMAIL_FROM_ADDRESS || "",
+    user: env("EMAIL_USER"),
+    pass: env("EMAIL_PASS"),
+    fromName: env("EMAIL_FROM_NAME", "Harit"),
+    fromAddress: env("EMAIL_FROM_ADDRESS"),
   },
 
-  ownerJid: process.env.OWNER_JID || "",
+  ownerJid: env("OWNER_JID"),
 
   replyDelayMin: int("REPLY_DELAY_MIN", 5),
   replyDelayMax: int("REPLY_DELAY_MAX", 15),
   rateLimitPerMin: int("RATE_LIMIT_PER_MIN", 20),
   historyLimit: int("HISTORY_LIMIT", 20),
 
-  botName: process.env.BOT_NAME || "Harit",
+  botName: env("BOT_NAME", "Harit"),
 
   paths: {
     auth: "data/auth",
@@ -46,3 +42,15 @@ export const config = {
 } as const;
 
 export type AppConfig = typeof config;
+
+export function assertRuntimeConfig(): void {
+  const missing: string[] = [];
+  if (!config.sarvamApiKey) missing.push("SARVAM_API_KEY");
+  if (!config.geminiApiKey) missing.push("GEMINI_API_KEY");
+  if (!config.email.user || !config.email.pass) missing.push("EMAIL_USER/EMAIL_PASS");
+  if (missing.length > 0) {
+    console.error(`[config] Missing env vars: ${missing.join(", ")}`);
+    console.error("[config] Copy .env.example to .env and fill in the keys.");
+    process.exit(1);
+  }
+}

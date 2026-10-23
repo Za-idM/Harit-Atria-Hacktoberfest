@@ -17,8 +17,9 @@ import {
   speakText,
 } from "./translate/sarvam.js";
 import { runAgent, runImageAgent } from "./agent.js";
-import { saveFarmerLanguage, getFarmerProfile } from "./memory/db.js";
+import { saveFarmerLanguage, getFarmerProfile, bumpMetric } from "./memory/db.js";
 import { wavToOggOpus } from "./media/ffmpeg.js";
+import { enforceSafety } from "./guardrails.js";
 
 const logger = P({ level: "info" });
 
@@ -112,6 +113,7 @@ async function handleMessage(m: proto.IWebMessageInfo): Promise<void> {
     );
     try {
       const image = (await downloadMediaMessage(m, "buffer", {})) as Buffer;
+      bumpMetric("crop_photos");
       if (image.length > 8 * 1024 * 1024) {
         await sock.sendMessage(jid, {
           text: "That photo is too large. Please send a smaller one.",
@@ -217,13 +219,14 @@ async function processAndReply(
     (config.replyDelayMin +
       Math.random() * (config.replyDelayMax - config.replyDelayMin));
   await sleep(delayMs);
+  bumpMetric("messages_handled");
 
   try {
     const reply = image
       ? await runImageAgent(jid, image.imageBase64, image.mimeType, image.captionEn)
       : await runAgent(jid, enText);
 
-    let finalText = reply.text;
+    let finalText = enforceSafety(reply.text).text;
     if (languageCode !== "en-IN") {
       try {
         const tr = await translateText(reply.text, "en-IN", languageCode);
@@ -247,6 +250,7 @@ async function processAndReply(
       try {
         const wav = await speakText(finalText, languageCode);
         if (wav && wav.length > 0) {
+          bumpMetric("voice_notes_sent");
           const opus = await wavToOggOpus(wav);
           if (opus.length > 0) {
             await sock.sendMessage(jid, {

@@ -10,6 +10,8 @@
     "start": "node dist/index.js",
     "dev": "tsc && node dist/index.js",
     "typecheck": "tsc --noEmit",
+    "eval": "tsc && node dist/eval.js",
+    "eval:live": "tsc && node dist/eval.js --live",
     "pm2:start": "pm2 start ecosystem.config.cjs",
     "pm2:logs": "pm2 logs harit",
     "pm2:restart": "pm2 restart harit",

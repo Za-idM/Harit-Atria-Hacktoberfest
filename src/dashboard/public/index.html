@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Harit Officer Portal</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}</style>
+</head>
+<body class="bg-stone-100 text-stone-800">
+<div id="login" class="min-h-screen flex items-center justify-center">
+  <div class="bg-white p-8 rounded-xl shadow-md w-80">
+    <div class="text-2xl font-bold text-green-800 mb-1">🌾 Harit</div>
+    <div class="text-sm text-stone-500 mb-6">Officer Portal — KVK / Agriculture Dept</div>
+    <input id="pw" type="password" placeholder="Officer password" class="w-full border rounded px-3 py-2 mb-3 text-sm" />
+    <button onclick="login()" class="w-full bg-green-800 text-white rounded py-2 text-sm hover:bg-green-900">Sign in</button>
+    <div id="loginErr" class="text-red-600 text-xs mt-2 hidden">Wrong password</div>
+  </div>
+</div>
+
+<div id="app" class="hidden max-w-6xl mx-auto p-6">
+  <header class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-xl font-bold text-green-900">🌾 Harit — District Agriculture Dashboard</h1>
+      <p class="text-xs text-stone-500">Farmer helpline oversight · Gemma 4 on WhatsApp · Groq analytics</p>
+    </div>
+    <button onclick="foresight()" class="bg-amber-600 text-white text-sm px-4 py-2 rounded hover:bg-amber-700">Regional Foresight</button>
+  </header>
+
+  <div id="stats" class="grid grid-cols-4 gap-3 mb-6"></div>
+
+  <div id="foresightBox" class="hidden bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-sm whitespace-pre-wrap"></div>
+
+  <div class="grid grid-cols-5 gap-4">
+    <div class="col-span-2 bg-white rounded-lg shadow-sm overflow-hidden">
+      <div class="px-4 py-3 border-b text-sm font-semibold text-stone-600">Farmer conversations</div>
+      <div id="chatList" class="divide-y max-h-[28rem] overflow-y-auto"></div>
+    </div>
+    <div class="col-span-3 bg-white rounded-lg shadow-sm p-4">
+      <div id="inspectorEmpty" class="text-sm text-stone-400 text-center py-16">Select a conversation to inspect</div>
+      <div id="inspector" class="hidden">
+        <div class="text-xs text-stone-500 mb-2" id="inspectorJid"></div>
+        <div id="summary" class="mb-4"></div>
+        <div id="msgs" class="space-y-2 max-h-96 overflow-y-auto"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let token = sessionStorage.getItem("t") || "";
+let currentJid = null;
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, { ...opts, headers: { "Content-Type": "application/json", Authorization: "Bearer " + token } });
+  if (res.status === 401) { logout(); throw new Error("unauthorized"); }
+  return res.json();
+}
+
+async function login() {
+  const pw = document.getElementById("pw").value;
+  const r = await fetch("/api/auth/login", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ password: pw }) });
+  if (!r.ok) { document.getElementById("loginErr").classList.remove("hidden"); return; }
+  token = (await r.json()).token;
+  sessionStorage.setItem("t", token);
+  show();
+}
+
+function logout() { sessionStorage.removeItem("t"); location.reload(); }
+
+async function show() {
+  document.getElementById("login").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  await refreshStats(); await refreshChats();
+}
+
+async function refreshStats() {
+  const s = await api("/api/dashboard/stats");
+  document.getElementById("stats").innerHTML = [
+    ["Messages handled", s.messages_handled, "bg-green-50 text-green-900"],
+    ["Conversations", s.chats, "bg-emerald-50 text-emerald-900"],
+    ["Crop photos", s.crop_photos, "bg-lime-50 text-lime-900"],
+    ["Voice notes sent", s.voice_notes_sent, "bg-teal-50 text-teal-900"],
+  ].map(([l, v, c]) => `<div class="rounded-lg p-4 ${c}"><div class="text-2xl font-bold">${v}</div><div class="text-xs">${l}</div></div>`).join("");
+}
+
+async function refreshChats() {
+  const chats = await api("/api/chats");
+  document.getElementById("chatList").innerHTML = chats.map(c => `
+    <button onclick="openChat('${c.jid}')" class="w-full text-left px-4 py-3 hover:bg-stone-50">
+      <div class="text-sm font-medium truncate">${c.jid.split("@")[0].slice(0, 16)}</div>
+      <div class="text-xs text-stone-500 truncate">${esc(c.last_message)}</div>
+      <div class="text-[10px] text-stone-400 mt-1">${c.msg_count} msgs · ${new Date(c.last_ts).toLocaleTimeString()}</div>
+    </button>`).join("") || '<div class="p-4 text-sm text-stone-400">No chats yet</div>';
+}
+
+async function openChat(jid) {
+  currentJid = jid;
+  document.getElementById("inspectorEmpty").classList.add("hidden");
+  document.getElementById("inspector").classList.remove("hidden");
+  document.getElementById("inspectorJid").textContent = jid;
+  document.getElementById("summary").innerHTML = '<div class="text-xs text-stone-400">Analyzing…</div>';
+  const { messages } = await api("/api/chats/" + encodeURIComponent(jid));
+  document.getElementById("msgs").innerHTML = messages.map(m => `
+    <div class="${m.role === "user" ? "text-right" : ""}">
+      <span class="inline-block ${m.role === "user" ? "bg-green-100" : "bg-stone-100"} rounded px-3 py-1.5 text-sm max-w-[85%] text-left whitespace-pre-wrap">${esc(m.content)}</span>
+    </div>`).join("");
+  const s = await api("/api/chats/" + encodeURIComponent(jid) + "/summary", { method: "POST" });
+  if (s.empty) { document.getElementById("summary").innerHTML = ""; return; }
+  const badge = s.status === "Alerting" ? "bg-red-100 text-red-700" : s.status === "Noteworthy" ? "bg-amber-100 text-amber-700" : "bg-stone-100 text-stone-600";
+  document.getElementById("summary").innerHTML = `
+    <div class="border rounded-lg p-3 text-sm">
+      <div class="flex gap-2 items-center mb-2">
+        <span class="px-2 py-0.5 rounded text-xs font-semibold ${badge}">${s.status}</span>
+        <span class="text-xs text-stone-400">crop: ${esc(s.crop)} · issue: ${esc(s.issueType)} · via ${s.engine}</span>
+      </div>
+      <div><b>📌 Concern:</b> ${esc(s.concern)}</div>
+      <div class="mt-1"><b>💡 Advice:</b> ${esc(s.advice)}</div>
+    </div>`;
+}
+
+async function foresight() {
+  const box = document.getElementById("foresightBox");
+  box.classList.remove("hidden");
+  box.textContent = "Synthesizing regional pulse…";
+  const r = await api("/api/foresight", { method: "POST" });
+  box.textContent = "Regional Foresight (" + r.engine + "):\n\n" + r.text;
+}
+
+function esc(s) { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; }
+
+if (token) show();
+</script>
+</body>
+</html>

@@ -1,4 +1,5 @@
 import { config, assertRuntimeConfig } from "./config.js";
+import { startDashboard } from "./dashboard/server.js";
 import { startWhatsApp, sendFromScheduler } from "./whatsapp.js";
 import { startScheduler, stopScheduler } from "./reminders/scheduler.js";
 import { closeDb } from "./memory/db.js";
@@ -14,6 +15,7 @@ let shuttingDown = false;
 async function main(): Promise<void> {
   assertRuntimeConfig();
   bootCheck();
+  startDashboard();
   startScheduler(async (jid, text) => sendFromScheduler(jid, text));
   await startWhatsApp(() => {});
 }

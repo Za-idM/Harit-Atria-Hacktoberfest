@@ -28,6 +28,16 @@ export const config = {
 
   ownerJid: env("OWNER_JID"),
 
+  groq: {
+    apiKey: env("GROQ_API_KEY"),
+    model: env("GROQ_MODEL", "llama-3.3-70b-versatile"),
+  },
+
+  dashboard: {
+    port: int("DASHBOARD_PORT", 3000),
+    password: env("OFFICER_PASSWORD", "harit2026"),
+  },
+
   replyDelayMin: int("REPLY_DELAY_MIN", 5),
   replyDelayMax: int("REPLY_DELAY_MAX", 15),
   rateLimitPerMin: int("RATE_LIMIT_PER_MIN", 20),

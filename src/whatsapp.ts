@@ -77,7 +77,9 @@ export async function startWhatsApp(onReady: () => void): Promise<void> {
   sock.ev.on("messages.upsert", async ({ messages, type }) => {
     if (type !== "notify") return;
     for (const m of messages) {
-      await handleMessage(m);
+      handleMessage(m).catch((e) =>
+        console.error("[whatsapp] message handler error:", e?.message ?? e)
+      );
     }
   });
 }

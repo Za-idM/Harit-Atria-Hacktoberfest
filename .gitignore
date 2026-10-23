@@ -1,0 +1,9 @@
+node_modules/
+dist/
+data/auth/
+data/bot.db
+data/bot.db-wal
+data/bot.db-shm
+.env
+*.log
+.DS_Store

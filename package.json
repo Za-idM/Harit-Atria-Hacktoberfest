@@ -6,7 +6,7 @@
   "description": "Harit — WhatsApp farmer helpline: text/voice/photo in any Indian language, Gemma answers",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node -e \"require('fs').cpSync('src/dashboard/public','dist/dashboard/public',{recursive:true})\"",
     "start": "node dist/index.js",
     "dev": "tsc && node dist/index.js",
     "typecheck": "tsc --noEmit",

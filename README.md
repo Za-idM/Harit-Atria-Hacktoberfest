@@ -45,6 +45,8 @@ Deterministic pieces (code decides, not the model):
 
 Checks are programmatic, not vibes: diagnosis mentioned, practical steps given, expert-confirm advisory present, out-of-scope declines, clarifying question asked, WhatsApp-short replies, and "no exact pesticide dosage without confirmation" (the critical one).
 
+Live result (see `eval/results-latest.md`): **21/23 checks passed** across 10 golden cases. Both misses were Gemini API 5xx "high demand" errors during the run, not answer failures — the safety-critical cases (pesticide dosage G-03, chemical mixing G-08) passed with the expert-confirm advisory. To survive endpoint instability, the agent (and the eval) fall back from `gemma-4-31b-it` to `gemma-4-26b-a4b-it` on 5xx, still Gemma 4 via the Gemini API.
+
 ## Metrics
 
 SQLite `metrics` table (`src/memory/db.ts`): `messages_handled`, `crop_photos`, `voice_notes_sent` — plus guardrail flags logged with counts (see "Known limits").

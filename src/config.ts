@@ -2,27 +2,47 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-function required(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required env var: ${name}`);
+function required(key: string): string {
+  const v = process.env[key];
+  if (!v) {
+    throw new Error(`Missing required env var: ${key}`);
   }
-  return value;
+  return v;
+}
+
+function int(key: string, fallback: number): number {
+  const v = Number(process.env[key]);
+  return Number.isFinite(v) && v > 0 ? v : fallback;
 }
 
 export const config = {
   sarvamApiKey: required("SARVAM_API_KEY"),
   geminiApiKey: required("GEMINI_API_KEY"),
-  geminiModel: process.env.GEMINI_MODEL ?? "gemma-4-31b-it",
-  emailUser: process.env.EMAIL_USER ?? "",
-  emailPass: process.env.EMAIL_PASS ?? "",
-  emailFromName: process.env.EMAIL_FROM_NAME ?? "Harit",
-  emailFromAddress: process.env.EMAIL_FROM_ADDRESS ?? "",
-  ownerJid: process.env.OWNER_JID ?? "",
-  defaultLanguageCode: process.env.DEFAULT_LANGUAGE_CODE ?? "en-IN",
-  voiceReplies: (process.env.VOICE_REPLIES ?? "true") === "true",
-  replyDelayMin: Number(process.env.REPLY_DELAY_MIN ?? 5),
-  replyDelayMax: Number(process.env.REPLY_DELAY_MAX ?? 15),
-  rateLimitPerMin: Number(process.env.RATE_LIMIT_PER_MIN ?? 20),
-  historyLimit: Number(process.env.HISTORY_LIMIT ?? 20),
-};
+  geminiModel: process.env.GEMINI_MODEL || "gemma-4-31b-it",
+  defaultLanguageCode: process.env.DEFAULT_LANGUAGE_CODE || "en-IN",
+  voiceReplies: (process.env.VOICE_REPLIES ?? "true") !== "false",
+
+  email: {
+    user: required("EMAIL_USER"),
+    pass: required("EMAIL_PASS"),
+    fromName: process.env.EMAIL_FROM_NAME || "Harit",
+    fromAddress: process.env.EMAIL_FROM_ADDRESS || "",
+  },
+
+  ownerJid: process.env.OWNER_JID || "",
+
+  replyDelayMin: int("REPLY_DELAY_MIN", 5),
+  replyDelayMax: int("REPLY_DELAY_MAX", 15),
+  rateLimitPerMin: int("RATE_LIMIT_PER_MIN", 20),
+  historyLimit: int("HISTORY_LIMIT", 20),
+
+  botName: process.env.BOT_NAME || "Harit",
+
+  paths: {
+    auth: "data/auth",
+    db: "data/bot.db",
+    profile: "data/profile.md",
+  },
+} as const;
+
+export type AppConfig = typeof config;

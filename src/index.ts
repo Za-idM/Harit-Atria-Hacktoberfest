@@ -1,17 +1,38 @@
 import { config } from "./config.js";
+import { startWhatsApp, sendFromScheduler } from "./whatsapp.js";
+import { startScheduler, stopScheduler } from "./reminders/scheduler.js";
+import { closeDb } from "./memory/db.js";
 
-function boot(): void {
-  const checks: string[] = [
-    `model: ${config.geminiModel}`,
-    `owner: ${config.ownerJid ? "configured" : "MISSING"}`,
-    `sarvam key: ${config.sarvamApiKey ? "configured" : "MISSING"}`,
-    `gemini key: ${config.geminiApiKey ? "configured" : "MISSING"}`,
-    `voice replies: ${config.voiceReplies}`,
-  ];
-  console.log("[harit] boot");
-  for (const line of checks) {
-    console.log(`[harit] ${line}`);
-  }
+function bootCheck(): void {
+  console.log(`[harit] model: ${config.geminiModel}`);
+  console.log(`[harit] owner: ${config.ownerJid ? "configured" : "NOT SET"}`);
+  console.log(`[harit] voice replies: ${config.voiceReplies}`);
 }
 
-boot();
+let shuttingDown = false;
+
+async function main(): Promise<void> {
+  bootCheck();
+  startScheduler(async (jid, text) => sendFromScheduler(jid, text));
+  await startWhatsApp(() => {});
+}
+
+process.on("SIGINT", async () => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log("\n[harit] Shutting down gracefully...");
+  stopScheduler();
+  closeDb();
+  process.exit(0);
+});
+
+process.on("SIGTERM", () => {
+  stopScheduler();
+  closeDb();
+  process.exit(0);
+});
+
+main().catch((e) => {
+  console.error("[harit] Fatal boot error:", e);
+  process.exit(1);
+});

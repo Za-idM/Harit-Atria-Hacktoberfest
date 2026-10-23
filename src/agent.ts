@@ -96,12 +96,13 @@ export async function runAgent(
 
   let iterations = 0;
   const MAX_ITERATIONS = 4;
+  let activeModel = config.geminiModel;
 
   while (iterations++ < MAX_ITERATIONS) {
     let response;
     try {
       response = await callModel(
-        config.geminiModel,
+        activeModel,
         contents,
         buildSystemPrompt(chatId),
         toolsSupported
@@ -110,9 +111,19 @@ export async function runAgent(
       const msg = String(e?.message ?? e);
       if (toolsSupported && /tool|function|unsupported/i.test(msg)) {
         console.warn(
-          `[agent] model '${config.geminiModel}' rejected function calling; retrying in plain-text mode.`
+          `[agent] model '${activeModel}' rejected function calling; retrying in plain-text mode.`
         );
         toolsSupported = false;
+        continue;
+      }
+      if (
+        activeModel !== config.geminiFallbackModel &&
+        /internal|500|503|unavailable|overloaded|demand/i.test(msg)
+      ) {
+        console.warn(
+          `[agent] '${activeModel}' unavailable; falling back to '${config.geminiFallbackModel}'.`
+        );
+        activeModel = config.geminiFallbackModel;
         continue;
       }
       throw e;
@@ -206,18 +217,42 @@ Keep it short (WhatsApp-friendly). If the image is unclear or not crop-related, 
     tool_name: null,
   });
 
-  const response = await ai.models.generateContent({
-    model: config.geminiModel,
-    contents: [
-      {
-        role: "user",
-        parts: [
-          { text: prompt },
-          { inlineData: { mimeType, data: imageBase64 } },
-        ] as Part[],
-      },
-    ],
-  });
+  let response;
+  try {
+    response = await ai.models.generateContent({
+      model: config.geminiModel,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: prompt },
+            { inlineData: { mimeType, data: imageBase64 } },
+          ] as Part[],
+        },
+      ],
+    });
+  } catch (e: any) {
+    const msg = String(e?.message ?? e);
+    if (/internal|500|503|unavailable|overloaded|demand/i.test(msg)) {
+      console.warn(
+        `[agent] vision: '${config.geminiModel}' unavailable; falling back to '${config.geminiFallbackModel}'.`
+      );
+      response = await ai.models.generateContent({
+        model: config.geminiFallbackModel,
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: prompt },
+              { inlineData: { mimeType, data: imageBase64 } },
+            ] as Part[],
+          },
+        ],
+      });
+    } else {
+      throw e;
+    }
+  }
 
   const text = response.text || "";
   saveMessage({

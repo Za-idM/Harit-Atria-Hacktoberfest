@@ -169,11 +169,11 @@ function runChecks(answer: string, g: Golden): CheckResult[] {
   return checks;
 }
 
-async function askGemma(questionEn: string): Promise<string> {
+async function askGemma(questionEn: string, model: string): Promise<string> {
   const ai = new GoogleGenAI({ apiKey: config.geminiApiKey });
   const persona = readFileSync(config.paths.profile, "utf8");
   const res = await ai.models.generateContent({
-    model: config.geminiModel,
+    model,
     contents: [{ role: "user", parts: [{ text: questionEn }] }],
     config: {
       systemInstruction: `${persona}\n\nThe farmer's message has been translated to English. Reply in clear, simple English. Keep it short and practical for a small-holding farmer.`,
@@ -181,6 +181,38 @@ async function askGemma(questionEn: string): Promise<string> {
     },
   });
   return res.text || "";
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function askGemmaRetry(
+  questionEn: string,
+  attempts = 3
+): Promise<{ answer: string; model: string }> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return { answer: await askGemma(questionEn, config.geminiModel), model: config.geminiModel };
+    } catch (e: any) {
+      lastErr = e;
+      const msg = String(e?.message ?? e);
+      const wait = 2000 * (i + 1);
+      console.log(`   retry ${i + 1}/${attempts} after ${wait}ms: ${msg.slice(0, 100)}`);
+      await sleep(wait);
+      if (i === 0 && /internal|500|503|unavailable|overloaded|demand/i.test(msg)) {
+        try {
+          const answer = await askGemma(questionEn, config.geminiFallbackModel);
+          console.log(`   fallback model ${config.geminiFallbackModel} succeeded`);
+          return { answer, model: config.geminiFallbackModel };
+        } catch (fe: any) {
+          console.log(`   fallback failed: ${String(fe?.message ?? fe).slice(0, 100)}`);
+        }
+      }
+    }
+  }
+  throw lastErr;
 }
 
 async function main(): Promise<void> {
@@ -193,6 +225,7 @@ async function main(): Promise<void> {
   const rows: {
     id: string;
     category: string;
+    model: string;
     passed: number;
     total: number;
     checks: string;
@@ -203,9 +236,12 @@ async function main(): Promise<void> {
 
   for (const g of GOLDEN) {
     let answer = "(dry-run: no model call)";
+    let usedModel = "-";
     if (live) {
       try {
-        answer = await askGemma(g.questionEn);
+        const r = await askGemmaRetry(g.questionEn);
+        answer = r.answer;
+        usedModel = r.model;
       } catch (e: any) {
         answer = `(ERROR: ${String(e?.message ?? e).slice(0, 160)})`;
       }
@@ -217,11 +253,12 @@ async function main(): Promise<void> {
     rows.push({
       id: g.id,
       category: g.category,
+      model: usedModel,
       passed,
       total: results.length,
       checks: results.map((r) => `${r.name}:${r.pass ? "PASS" : "FAIL"}`).join(" "),
     });
-    console.log(`\n===== ${g.id} (${g.lang}, ${g.category}) =====`);
+    console.log(`\n===== ${g.id} (${g.lang}, ${g.category}, model: ${usedModel}) =====`);
     console.log(`Q: ${g.questionEn}`);
     console.log(`A: ${answer.slice(0, 400).replace(/\n+/g, " | ")}`);
     for (const r of results) {
@@ -241,10 +278,11 @@ async function main(): Promise<void> {
     `- Run at: ${stamp}`,
     `- Result: **${summary}**`,
     ``,
-    `| Case | Category | Passed | Checks |`,
-    `|------|----------|--------|--------|`,
+    `| Case | Category | Model | Passed | Checks |`,
+    `|------|----------|-------|--------|--------|`,
     ...rows.map(
-      (r) => `| ${r.id} | ${r.category} | ${r.passed}/${r.total} | ${r.checks} |`
+      (r) =>
+        `| ${r.id} | ${r.category} | ${r.model.replace("models/", "")} | ${r.passed}/${r.total} | ${r.checks} |`
     ),
   ].join("\n");
   writeFileSync("eval/results-latest.md", md);

@@ -15,6 +15,7 @@ export const config = {
   sarvamApiKey: env("SARVAM_API_KEY"),
   geminiApiKey: env("GEMINI_API_KEY"),
   geminiModel: env("GEMINI_MODEL", "gemma-4-31b-it"),
+  geminiFallbackModel: env("GEMINI_FALLBACK_MODEL", "gemma-4-26b-a4b-it"),
   defaultLanguageCode: env("DEFAULT_LANGUAGE_CODE", "en-IN"),
   voiceReplies: (env("VOICE_REPLIES", "true")) !== "false",
 
